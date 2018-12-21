@@ -165,12 +165,13 @@
     - name: 'get repository list'
       command: |-
         curl
-        {%- if aptly.listen is match('^unix://.*') -%}
-        --unix-socket {{ aptly.listen | regex_replace('^unix://(.*)$', '\\1') }}
+        {% if aptly.listen is match('^unix://.*') %}
+        --unix-socket
+        {{ aptly.listen | regex_replace('^unix://(.*)$', '\\1') }}
         http:/api/repos
-        {%- else -%}
+        {% else %}
         http://localhost:{{ aptly.listen }}/api/repos
-        {%- endif -%}
+        {% endif %}
       register: 'list_repos'
       changed_when: 'False'
 
