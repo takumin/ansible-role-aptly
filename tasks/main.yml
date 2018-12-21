@@ -162,7 +162,7 @@
     #
     # Repository
     #
-    - name: 'get repository list'
+    - name: 'get repos list'
       command: |-
         curl
         -s
@@ -177,10 +177,14 @@
         {% endif -%}
       args:
         warn: False
-      register: 'list_repos'
+      register: 'raw_repos_list'
       changed_when: 'False'
 
-    - debug: 'msg={{ list_repos }}'
+    - name: 'convert json'
+      set_fact:
+        aptly_repos_list: '{{ raw_repos_list.stdout | from_json }}'
+
+    - debug: 'msg={{ aptly_repos_list }}'
 
     # block
     when:
