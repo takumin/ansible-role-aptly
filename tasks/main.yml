@@ -111,6 +111,9 @@
       when:
       - ansible_service_mgr == 'systemd'
 
+    #
+    # Environment
+    #
     - name: 'environment service'
       template:
         src:   'environment.j2'
@@ -127,6 +130,9 @@
       notify:
       - 'restarted service : aptly'
 
+    #
+    # Config
+    #
     - name: 'configure service'
       copy:
         content: '{{ aptly.config | to_nice_json(indent=2) }}'
@@ -140,6 +146,9 @@
       - 'aptly.config is defined'
       - 'aptly.config is mapping'
 
+    #
+    # Service
+    #
     - name: 'enabled service'
       service:
         name:    '{{ aptly.service }}'
@@ -149,6 +158,23 @@
       service:
         name:  '{{ aptly.service }}'
         state: 'started'
+
+    #
+    # Repository
+    #
+    - name: 'get repository list'
+      command: |-
+        curl
+        {%- if aptly.listen is match('^unix://.*') -%}
+        --unix-socket {{ aptly.listen | regex_replace('^unix://(.*)$', '\\1') }}
+        http:/api/repos
+        {%- else -%}
+        http://localhost:{{ aptly.listen }}/api/repos
+        {%- endif -%}
+      register: 'list_repos'
+      changed_when: 'False'
+
+    - debug: 'msg={{ list_repos }}'
 
     # block
     when:
