@@ -1,0 +1,12 @@
+---
+aptly_vars:
+  package:      'aptly'
+  service:      'aptly.service'
+  user_owner:   'aptly'
+  user_group:   'aptly'
+  user_comment: 'Aptly API Daemon'
+  user_home:    '/var/lib/aptly'
+  root_owner:   'root'
+  root_group:   'root'
+  config_path:  '/etc/aptly.conf'
+  run_dir:      '/var/run/aptly'

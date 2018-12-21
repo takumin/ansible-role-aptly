@@ -1,0 +1,17 @@
+---
+aptly:
+  package:      '{{ aptly_vars.package }}'
+  service:      '{{ aptly_vars.service }}'
+  user_owner:   '{{ aptly_vars.user_owner }}'
+  user_group:   '{{ aptly_vars.user_group }}'
+  user_comment: '{{ aptly_vars.user_comment }}'
+  user_home:    '{{ aptly_vars.user_home }}'
+  root_owner:   '{{ aptly_vars.root_owner }}'
+  root_group:   '{{ aptly_vars.root_group }}'
+  config_path:  '{{ aptly_vars.config_path }}'
+  run_dir:      '{{ aptly_vars.run_dir }}'
+
+  server:       False
+  listen:       'unix://{{ aptly_vars.run_dir }}/aptly.sock'
+  config:
+    rootDir:    '{{ aptly_vars.user_home }}'

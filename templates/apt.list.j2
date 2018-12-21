@@ -1,0 +1,11 @@
+#
+# {{ ansible_managed }}
+#
+
+{% if aptly_repository is defined and aptly_repository != '' %}
+# Aptly Stable Mirror Repository
+deb {{ aptly_repository }} squeeze main
+{% else %}
+# Aptly Stable Official Repository
+deb http://repo.aptly.info squeeze main
+{% endif %}

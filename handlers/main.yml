@@ -1,0 +1,7 @@
+---
+- name: 'restarted service : aptly'
+  service:
+    name:  '{{ aptly.service }}'
+    state: 'restarted'
+  tags:
+  - aptly

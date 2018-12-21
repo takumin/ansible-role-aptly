@@ -1,0 +1,35 @@
+#
+# {{ ansible_managed }}
+#
+[Unit]
+Description=Aptly API Server
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=full
+ProtectHome=true
+MountFlags=private
+NoNewPrivileges=true
+{% if ansible_os_family == 'Debian' %}
+EnvironmentFile=-/etc/default/aptly
+{% endif %}
+{% if ansible_os_family == 'RedHat' %}
+EnvironmentFile=-/etc/sysconfig/aptly
+{% endif %}
+User={{ aptly.user_owner }}
+Group={{ aptly.user_group }}
+Restart=on-failure
+KillSignal=SIGINT
+PermissionsStartOnly=yes
+ExecStartPre=/usr/bin/install -d -g {{ aptly.user_owner }} -o {{ aptly.user_group }} -m 0755 {{ aptly.run_dir }}
+ExecStart=/usr/bin/aptly api serve -listen={{ aptly.listen }} -config={{ aptly.config_path }}
+{% if aptly.listen is match('^unix://.*') %}
+ExecStartPost=/bin/sleep 1
+ExecStartPost=/bin/chmod ugo+w {{ aptly.listen | regex_replace('^unix://(.*)$', '\\1') }}
+{% endif %}
+
+[Install]
+WantedBy=multi-user.target

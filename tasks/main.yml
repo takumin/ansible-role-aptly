@@ -1,0 +1,160 @@
+---
+- block:
+  - include_vars: '{{ item }}'
+    with_first_found:
+    - '{{ ansible_distribution.lower() }}.yml'
+    - '{{ ansible_os_family.lower() }}.yml'
+    - '{{ ansible_system.lower() }}.yml'
+    - 'default.yml'
+
+  #
+  # Repository
+  #
+  - block:
+    - name: 'additional keyring'
+      apt_key:
+        keyserver: 'hkp://p80.pool.sks-keyservers.net:80'
+        id:        '26DA9D8630302E0B86A7A2CBED75B5A4483DA07C'
+      environment: '{{ proxy_environment | default({}) }}'
+
+    - name: 'additional repository'
+      template:
+        src:   'apt.list.j2'
+        dest:  '/etc/apt/sources.list.d/aptly.list'
+        owner: '{{ aptly.root_owner }}'
+        group: '{{ aptly.root_group }}'
+        mode:  '0444'
+      register: apt_repo
+
+    - name: 'repository update'
+      apt: update_cache=yes
+      when: apt_repo.changed
+
+    # block
+    when: ansible_distribution == 'Ubuntu'
+
+  #
+  # Package
+  #
+  - name: 'installed package'
+    package:
+      name:  '{{ aptly.package }}'
+      state: 'present'
+
+  #
+  # Server
+  #
+  - block:
+    #
+    # Owner/Group
+    #
+    - name: 'admin group'
+      group:
+        name:   '{{ aptly.user_group }}'
+        system: 'yes'
+
+    - name: 'admin user'
+      user:
+        name:       '{{ aptly.user_owner }}'
+        group:      '{{ aptly.user_group }}'
+        comment:    '{{ aptly.user_comment }}'
+        createhome: 'no'
+        home:       '{{ aptly.user_home }}'
+        shell:      '/usr/sbin/nologin'
+        system:     'yes'
+
+    #
+    # Directory
+    #
+    - name: 'require directory'
+      file:
+        state: 'directory'
+        path:  '{{ item }}'
+        owner: '{{ aptly.user_owner }}'
+        group: '{{ aptly.user_group }}'
+        mode:  '0755'
+      with_items:
+      - '{{ aptly.user_home }}'
+      - '{{ aptly.run_dir }}'
+
+    #
+    # Systemd
+    #
+    - block:
+      - name: 'service systemd'
+        template:
+          src:   'systemd.service.j2'
+          dest:  '/etc/systemd/system/{{ aptly.service }}'
+          owner: '{{ aptly.root_owner }}'
+          group: '{{ aptly.root_group }}'
+          mode:  '0444'
+        notify:
+        - 'restarted service : aptly'
+        register: result
+
+      - name: 'reload systemd'
+        systemd:
+          name:          '{{ aptly.service }}'
+          daemon_reload: 'yes'
+        when:
+        - result.changed
+
+      - name: 'tmpfiles.d entry'
+        copy:
+          content: 'd {{ aptly.run_dir }} 0755 {{ aptly.user_owner }} {{ aptly.user_group }} -'
+          dest:    '/etc/tmpfiles.d/aptly'
+          owner:   '{{ aptly.root_owner }}'
+          group:   '{{ aptly.root_group }}'
+          mode:    '0444'
+
+      # block
+      when:
+      - ansible_service_mgr == 'systemd'
+
+    - name: 'environment service'
+      template:
+        src:   'environment.j2'
+        dest: |-
+          {%- if ansible_os_family == 'Debian' -%}
+          {{ '/etc/default/aptly' }}
+          {%- endif -%}
+          {%- if ansible_os_family == 'RedHat' -%}
+          {{ '/etc/sysconfig/aptly' }}
+          {%- endif -%}
+        owner: '{{ aptly.root_owner }}'
+        group: '{{ aptly.root_group }}'
+        mode:  '0400'
+      notify:
+      - 'restarted service : aptly'
+
+    - name: 'configure service'
+      copy:
+        content: '{{ aptly.config | to_nice_json(indent=2) }}'
+        dest:    '{{ aptly.config_path }}'
+        owner:   '{{ aptly.user_owner }}'
+        group:   '{{ aptly.user_group }}'
+        mode:    '0444'
+      notify:
+      - 'restarted service : aptly'
+      when:
+      - 'aptly.config is defined'
+      - 'aptly.config is mapping'
+
+    - name: 'enabled service'
+      service:
+        name:    '{{ aptly.service }}'
+        enabled: 'yes'
+
+    - name: 'started service'
+      service:
+        name:  '{{ aptly.service }}'
+        state: 'started'
+
+    # block
+    when:
+    - 'aptly.server is defined'
+    - 'aptly.server is sameas true'
+
+  # block
+  tags:
+  - aptly
