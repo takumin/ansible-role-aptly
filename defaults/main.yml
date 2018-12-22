@@ -15,3 +15,5 @@ aptly:
   listen:       'unix://{{ aptly_vars.run_dir }}/aptly.sock'
   config:
     rootDir:    '{{ aptly_vars.user_home }}'
+  repos:
+  - 'ubuntu'

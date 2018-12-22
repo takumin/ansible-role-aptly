@@ -184,7 +184,27 @@
       set_fact:
         aptly_repos_list: '{{ raw_repos_list.stdout | from_json }}'
 
-    - debug: 'msg={{ aptly_repos_list }}'
+    - name: 'create repos'
+      command: |-
+        curl
+        -s
+        -X POST
+        -H 'Content-Type: application/json'
+        --data '{"Name": "{{ item }}"}'
+        {% if aptly.listen is match('^unix://.*') -%}
+        --unix-socket
+        {{ aptly.listen | regex_replace('^unix://(.*)$', '\1') }}
+        http:/api/repos
+        {% elif aptly.listen is match('^:[0-9]+$') -%}
+        http://localhost{{ aptly.listen }}/api/repos
+        {% else -%}
+        http://{{ aptly.listen }}/api/repos
+        {% endif -%}
+      args:
+        warn: False
+      when:
+      - 'item not in ( aptly_repos_list | map(attribute="Name") | list )'
+      with_items: '{{ aptly.repos | default([]) }}'
 
     # block
     when:
